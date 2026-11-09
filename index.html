@@ -1,0 +1,1293 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ZONA CACING.IO — ULTIMATE WORM ARENA V2</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #0d1117;
+            color: #ffffff;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        canvas#gameCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: block;
+            background: #090d14;
+        }
+
+        /* MINIMAP (Pojok Kanan Atas) */
+        .minimap-container {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            width: 150px;
+            height: 150px;
+            z-index: 20;
+            background: rgba(10, 15, 25, 0.85);
+            border: 2px solid rgba(255, 255, 255, 0.35);
+            border-radius: 10px;
+            overflow: hidden;
+            pointer-events: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+        }
+
+        #minimapCanvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        @media (max-width: 600px) {
+            .minimap-container {
+                width: 110px;
+                height: 110px;
+                top: 10px;
+                right: 10px;
+            }
+        }
+
+        /* HUD OVERLAY */
+        .hud-top-left {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            z-index: 20;
+            background: rgba(15, 23, 42, 0.75);
+            padding: 10px 16px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(4px);
+            pointer-events: none;
+        }
+
+        .hud-top-left div {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 2px;
+            color: #cbd5e1;
+        }
+
+        .hud-top-left span {
+            color: #38bdf8;
+            font-weight: 700;
+        }
+
+        .leaderboard-box {
+            position: absolute;
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 20;
+            background: rgba(15, 23, 42, 0.75);
+            padding: 8px 16px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(4px);
+            text-align: center;
+            max-width: 260px;
+            width: 90%;
+            pointer-events: none;
+        }
+
+        .leaderboard-title {
+            font-size: 12px;
+            font-weight: bold;
+            color: #fbbf24;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 4px;
+        }
+
+        .leaderboard-list {
+            font-size: 11px;
+            line-height: 1.3;
+            color: #e2e8f0;
+        }
+
+        .hud-boost-bar {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            z-index: 20;
+            width: 180px;
+            background: rgba(15, 23, 42, 0.75);
+            padding: 10px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            pointer-events: none;
+        }
+
+        .boost-label {
+            font-size: 11px;
+            font-weight: bold;
+            color: #38bdf8;
+            margin-bottom: 4px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .boost-track {
+            width: 100%;
+            height: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+            overflow: hidden;
+        }
+
+        .boost-fill {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, #38bdf8, #818cf8);
+            transition: width 0.1s linear;
+        }
+
+        /* MOBILE TOUCH CONTROLS */
+        #touch-controls {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 25;
+            pointer-events: none;
+        }
+
+        .joystick-zone {
+            position: absolute;
+            bottom: 30px;
+            left: 30px;
+            width: 120px;
+            height: 120px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 2px dashed rgba(255, 255, 255, 0.25);
+            border-radius: 50%;
+            pointer-events: auto;
+            touch-action: none;
+        }
+
+        .joystick-knob {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 50px;
+            height: 50px;
+            margin-top: -25px;
+            margin-left: -25px;
+            background: rgba(56, 189, 248, 0.6);
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
+        }
+
+        .mobile-boost-btn {
+            position: absolute;
+            bottom: 40px;
+            right: 30px;
+            width: 75px;
+            height: 75px;
+            background: linear-gradient(135deg, #ef4444, #f59e0b);
+            border-radius: 50%;
+            border: 3px solid rgba(255, 255, 255, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 14px;
+            color: #fff;
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.5);
+            pointer-events: auto;
+            touch-action: none;
+        }
+
+        /* OVERLAY SCREENS */
+        .overlay-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 50;
+            background: rgba(9, 13, 20, 0.88);
+            backdrop-filter: blur(8px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .menu-card {
+            background: rgba(30, 41, 59, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            padding: 30px;
+            border-radius: 20px;
+            width: 100%;
+            max-width: 440px;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+        }
+
+        .game-title {
+            font-size: 30px;
+            font-weight: 900;
+            background: linear-gradient(90deg, #38bdf8, #a855f7, #f43f5e);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 20px;
+            letter-spacing: 2px;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        .input-group label {
+            display: block;
+            font-size: 12px;
+            color: #94a3b8;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 12px 16px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(15, 23, 42, 0.8);
+            color: #fff;
+            font-size: 16px;
+            text-align: center;
+            outline: none;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px;
+            margin-bottom: 10px;
+            border-radius: 12px;
+            border: none;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+        }
+
+        .btn-primary {
+            background: linear-gradient(90deg, #22c55e, #16a34a);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: rgba(51, 65, 85, 0.8);
+            color: #e2e8f0;
+        }
+
+        .skin-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin: 15px 0;
+            max-height: 220px;
+            overflow-y: auto;
+        }
+
+        .skin-card {
+            background: rgba(15, 23, 42, 0.6);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 10px;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .skin-card.selected {
+            border-color: #38bdf8;
+            background: rgba(56, 189, 248, 0.15);
+        }
+
+        .skin-preview {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            margin-bottom: 6px;
+        }
+
+        .quiz-option-btn {
+            width: 100%;
+            padding: 12px;
+            margin: 6px 0;
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #e2e8f0;
+            border-radius: 10px;
+            font-size: 13px;
+            cursor: pointer;
+            text-align: left;
+            transition: background 0.2s;
+        }
+
+        .quiz-option-btn:hover {
+            background: rgba(56, 189, 248, 0.2);
+            border-color: #38bdf8;
+        }
+
+        .coins-display {
+            font-size: 14px;
+            color: #fbbf24;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+
+        <div class="minimap-container">
+            <canvas id="minimapCanvas" width="150" height="150"></canvas>
+        </div>
+
+        <div class="hud-top-left">
+            <div>Pemain: <span id="hud-name">Cacing</span></div>
+            <div>Skor: <span id="hud-score">0</span></div>
+            <div>Panjang: <span id="hud-length">10</span></div>
+        </div>
+
+        <div class="leaderboard-box">
+            <div class="leaderboard-title">Top Arena</div>
+            <div id="leaderboard-list" class="leaderboard-list">Memuat...</div>
+        </div>
+
+        <div class="hud-boost-bar">
+            <div class="boost-label">
+                <span>BOOST ENERGI</span>
+                <span id="boost-val">100%</span>
+            </div>
+            <div class="boost-track">
+                <div id="boost-fill" class="boost-fill"></div>
+            </div>
+        </div>
+
+        <div id="touch-controls">
+            <div id="joystick" class="joystick-zone">
+                <div id="joystick-knob" class="joystick-knob"></div>
+            </div>
+            <div id="btn-mobile-boost" class="mobile-boost-btn">BOOST</div>
+        </div>
+
+        <!-- MAIN MENU -->
+        <div id="main-menu" class="overlay-screen">
+            <div class="menu-card">
+                <div class="game-title">ZONA CACING.IO</div>
+                <div class="coins-display">💰 Koin: <span id="menu-coins">0</span></div>
+                
+                <div class="input-group">
+                    <label for="player-name">Nama Cacing Kamu</label>
+                    <input type="text" id="player-name" maxlength="14" value="Cacing Sakti">
+                </div>
+
+                <button id="btn-play" class="btn btn-primary">MAIN SEKARANG</button>
+                <button id="btn-shop" class="btn btn-secondary">TOKO SKIN</button>
+            </div>
+        </div>
+
+        <!-- SKIN SHOP -->
+        <div id="shop-menu" class="overlay-screen hidden">
+            <div class="menu-card">
+                <div style="font-size: 20px; font-weight: bold; margin-bottom: 10px;">TOKO SKIN</div>
+                <div class="coins-display">💰 Koin: <span id="shop-coins">0</span></div>
+                
+                <div id="skin-grid" class="skin-grid"></div>
+
+                <button id="btn-close-shop" class="btn btn-secondary">KEMBALI KE MENU</button>
+            </div>
+        </div>
+
+        <!-- KUIS KESEHATAN -->
+        <div id="quiz-modal" class="overlay-screen hidden">
+            <div class="menu-card" style="border-color: #ef4444;">
+                <div style="font-size: 14px; font-weight: bold; color: #ef4444; margin-bottom: 6px;">⚔️ KAMU MEMBUNUH LAWAN!</div>
+                <div style="font-size: 18px; font-weight: bold; color: #fbbf24; margin-bottom: 15px;">KUIS KESEHATAN</div>
+                <div id="quiz-question" style="font-size: 14px; color: #e2e8f0; margin-bottom: 15px; line-height: 1.4;"></div>
+                <div id="quiz-options"></div>
+            </div>
+        </div>
+
+        <!-- GAME OVER -->
+        <div id="game-over-menu" class="overlay-screen hidden">
+            <div class="menu-card">
+                <div style="font-size: 28px; font-weight: bold; color: #ef4444; margin-bottom: 10px;">KAMU MATI!</div>
+                <div style="font-size: 14px; color: #94a3b8; margin-bottom: 20px;">Cacingmu menabrak musuh atau batas merah arena.</div>
+                
+                <div style="background: rgba(15,23,42,0.6); padding: 15px; border-radius: 10px; margin-bottom: 20px; text-align: left;">
+                    <div>Skor Akhir: <span id="go-score" style="color:#38bdf8; font-weight:bold;">0</span></div>
+                    <div>Panjang Maksimal: <span id="go-length" style="color:#38bdf8; font-weight:bold;">0</span></div>
+                    <div>Peringkat Terakhir: <span id="go-rank" style="color:#fbbf24; font-weight:bold;">#--</span></div>
+                    <div>Koin Diperoleh: <span id="go-coins" style="color:#22c55e; font-weight:bold;">+0</span></div>
+                </div>
+
+                <button id="btn-restart" class="btn btn-primary">MAIN LAGI</button>
+                <button id="btn-to-menu" class="btn btn-secondary">MENU UTAMA</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const CONFIG = {
+            WORLD_SIZE: 3000,
+            FOOD_COUNT: 450,
+            RARE_FOOD_COUNT: 40,
+            BOT_COUNT: 22,
+            INITIAL_SEGMENTS: 12,
+            SEGMENT_DISTANCE: 7,
+            BASE_SPEED: 3.5,
+            BOOST_SPEED: 6.5,
+            BOOST_CONSUMPTION: 0.35,
+            BOOST_REGEN: 0.15
+        };
+
+        const SMOKING_QUIZZES = [
+            {
+                q: "Zat berbahaya manakah dalam rokok yang menyebabkan kecanduan utama?",
+                options: ["Nikotin", "Karbon Monoksida", "Tar", "Aseton"],
+                ans: 0
+            },
+            {
+                q: "Zat beracun dalam asap rokok yang mengikat hemoglobin darah sehingga menguraikan kadar oksigen adalah...",
+                options: ["Tar", "Karbon Monoksida", "Nikotin", "Formaldehida"],
+                ans: 1
+            },
+            {
+                q: "Penyakit kronis paru-paru utama yang sering dipicu oleh kebiasaan merokok jangka panjang adalah...",
+                options: ["Asma menetap", "Emfisema & Kanker Paru", "Flu menahun", "Diabetes"],
+                ans: 1
+            },
+            {
+                q: "Cairan hitam lengket dari rokok yang mengendap di paru-paru dan merusak silia paru dinamakan...",
+                options: ["Nikotin", "Benzena", "Tar", "Amonia"],
+                ans: 2
+            },
+            {
+                q: "Orang yang tidak merokok tetapi ikut menghirup asap rokok dari orang lain disebut...",
+                options: ["Perokok Pasif", "Perokok Aktif", "Perokok Utama", "Perokok Sekunder"],
+                ans: 0
+            }
+        ];
+
+        class SoundSystem {
+            constructor() { this.ctx = null; }
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            }
+            playEat() {
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(400, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(800, this.ctx.currentTime + 0.08);
+                gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.08);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.08);
+            }
+            playDie() {
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(220, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(40, this.ctx.currentTime + 0.3);
+                gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.3);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.3);
+            }
+        }
+        const soundSystem = new SoundSystem();
+
+        const SKINS = [
+            { id: 'rainbow', name: 'Rainbow', cost: 0, colors: ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#a855f7'] },
+            { id: 'fire', name: 'Fire', cost: 50, colors: ['#ef4444', '#f97316', '#fbbf24'] },
+            { id: 'ice', name: 'Ice', cost: 75, colors: ['#06b6d4', '#38bdf8', '#e0f2fe'] },
+            { id: 'neon', name: 'Neon', cost: 100, colors: ['#a855f7', '#ec4899', '#38bdf8'] },
+            { id: 'galaxy', name: 'Galaxy', cost: 150, colors: ['#4c1d95', '#7c3aed', '#c084fc', '#e879f9'] },
+            { id: 'gold', name: 'Gold', cost: 200, colors: ['#78350f', '#d97706', '#fbbf24', '#fef08a'] },
+            { id: 'shadow', name: 'Shadow', cost: 250, colors: ['#0f172a', '#334155', '#64748b'] },
+            { id: 'diamond', name: 'Diamond', cost: 400, colors: ['#155e75', '#0891b2', '#67e8f9', '#ffffff'] }
+        ];
+
+        const Storage = {
+            getCoins: () => parseInt(localStorage.getItem('zc_coins') || '0'),
+            setCoins: (v) => localStorage.setItem('zc_coins', v.toString()),
+            getUnlockedSkins: () => JSON.parse(localStorage.getItem('zc_skins') || '["rainbow"]'),
+            unlockSkin: (id) => {
+                const skins = Storage.getUnlockedSkins();
+                if (!skins.includes(id)) {
+                    skins.push(id);
+                    localStorage.setItem('zc_skins', JSON.stringify(skins));
+                }
+            },
+            getSelectedSkin: () => localStorage.getItem('zc_selected_skin') || 'rainbow',
+            setSelectedSkin: (id) => localStorage.setItem('zc_selected_skin', id)
+        };
+
+        class Food {
+            constructor(x, y, value = 1, isSpecial = false, color = null) {
+                this.x = x;
+                this.y = y;
+                this.value = value;
+                this.isSpecial = isSpecial;
+                this.radius = isSpecial ? 6 + value : 3 + value * 0.5;
+                const colors = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#ec4899', '#a855f7'];
+                this.color = color || (isSpecial ? '#fbbf24' : colors[Math.floor(Math.random() * colors.length)]);
+                this.pulse = Math.random() * Math.PI * 2;
+            }
+
+            draw(ctx) {
+                this.pulse += 0.05;
+                const r = this.radius + (this.isSpecial ? Math.sin(this.pulse) * 1.5 : 0);
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, Math.max(1, r), 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.shadowColor = this.color;
+                ctx.shadowBlur = this.isSpecial ? 8 : 3;
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            }
+        }
+
+        class Worm {
+            constructor(x, y, name, skinId, isBot = false) {
+                this.x = x;
+                this.y = y;
+                this.name = name;
+                this.skinId = skinId;
+                this.skin = SKINS.find(s => s.id === skinId) || SKINS[0];
+                this.isBot = isBot;
+                this.angle = Math.random() * Math.PI * 2;
+                this.targetAngle = this.angle;
+                this.speed = CONFIG.BASE_SPEED;
+                this.isBoosting = false;
+                this.boostEnergy = 100;
+                this.score = 0;
+                this.dead = false;
+
+                this.segments = [];
+                for (let i = 0; i < CONFIG.INITIAL_SEGMENTS; i++) {
+                    this.segments.push({
+                        x: x - i * CONFIG.SEGMENT_DISTANCE * Math.cos(this.angle),
+                        y: y - i * CONFIG.SEGMENT_DISTANCE * Math.sin(this.angle)
+                    });
+                }
+
+                this.aiTargetPos = null;
+                this.aiTimer = 0;
+                this.aiState = 'WANDER';
+            }
+
+            update(deltaTime) {
+                if (this.dead) return;
+
+                if (this.isBoosting && this.boostEnergy > 5) {
+                    this.speed = CONFIG.BOOST_SPEED;
+                    this.boostEnergy -= CONFIG.BOOST_CONSUMPTION * 60 * deltaTime;
+                    if (Math.random() < 0.3) {
+                        const tail = this.segments[this.segments.length - 1];
+                        game.foods.push(new Food(tail.x + (Math.random() - 0.5) * 10, tail.y + (Math.random() - 0.5) * 10, 0.5));
+                    }
+                } else {
+                    this.speed = CONFIG.BASE_SPEED;
+                    this.isBoosting = false;
+                    if (this.boostEnergy < 100) {
+                        this.boostEnergy += CONFIG.BOOST_REGEN * 60 * deltaTime;
+                    }
+                }
+
+                // Rotasi Halus Terarah (Mencegah Lingkaran Patah)
+                let diff = this.targetAngle - this.angle;
+                while (diff < -Math.PI) diff += Math.PI * 2;
+                while (diff > Math.PI) diff -= Math.PI * 2;
+                
+                const maxTurn = 0.08 * (deltaTime * 60);
+                this.angle += Math.max(-maxTurn, Math.min(maxTurn, diff));
+
+                this.x += Math.cos(this.angle) * this.speed * (deltaTime * 60);
+                this.y += Math.sin(this.angle) * this.speed * (deltaTime * 60);
+
+                // Tabrakan Batas Arena Garis Merah
+                if (this.x < 60 || this.x > CONFIG.WORLD_SIZE - 60 || this.y < 60 || this.y > CONFIG.WORLD_SIZE - 60) {
+                    if (this.isBot) {
+                        this.targetAngle = Math.atan2(CONFIG.WORLD_SIZE / 2 - this.y, CONFIG.WORLD_SIZE / 2 - this.x);
+                    } else {
+                        this.die(null);
+                        return;
+                    }
+                }
+
+                this.segments[0] = { x: this.x, y: this.y };
+                for (let i = 1; i < this.segments.length; i++) {
+                    const prev = this.segments[i - 1];
+                    const curr = this.segments[i];
+                    const dx = prev.x - curr.x;
+                    const dy = prev.y - curr.y;
+                    const dist = Math.hypot(dx, dy);
+
+                    if (dist > CONFIG.SEGMENT_DISTANCE) {
+                        const factor = CONFIG.SEGMENT_DISTANCE / dist;
+                        curr.x = prev.x - dx * factor;
+                        curr.y = prev.y - dy * factor;
+                    }
+                }
+
+                if (this.isBot) {
+                    this.updateAI();
+                }
+            }
+
+            updateAI() {
+                this.aiTimer++;
+
+                // Menghindari Rintangan & Tembok Merah
+                let obstacleAhead = false;
+                const lookAheadDist = 120;
+                const futureX = this.x + Math.cos(this.angle) * lookAheadDist;
+                const futureY = this.y + Math.sin(this.angle) * lookAheadDist;
+
+                const allWorms = [game.player, ...game.bots].filter(w => w && !w.dead && w !== this);
+                for (let w of allWorms) {
+                    for (let seg of w.segments) {
+                        if (Math.hypot(futureX - seg.x, futureY - seg.y) < 40) {
+                            obstacleAhead = true;
+                            const avoidAngle = Math.atan2(this.y - seg.y, this.x - seg.x);
+                            this.targetAngle = avoidAngle;
+                            break;
+                        }
+                    }
+                    if (obstacleAhead) break;
+                }
+
+                if (obstacleAhead) return;
+
+                // Logika Berburu Target Lawan & Top 1
+                if (this.aiTimer > 60 || !this.aiTargetPos) {
+                    this.aiTimer = 0;
+                    
+                    let top1Worm = game.player;
+                    let maxScore = game.player ? game.player.score : 0;
+
+                    for (let b of game.bots) {
+                        if (!b.dead && b.score > maxScore) {
+                            maxScore = b.score;
+                            top1Worm = b;
+                        }
+                    }
+
+                    if (top1Worm && top1Worm !== this && Math.hypot(top1Worm.x - this.x, top1Worm.y - this.y) < 600) {
+                        this.aiState = 'HUNT';
+                        const head = top1Worm.segments[0];
+                        const interceptX = head.x + Math.cos(top1Worm.angle) * 80;
+                        const interceptY = head.y + Math.sin(top1Worm.angle) * 80;
+                        this.aiTargetPos = { x: interceptX, y: interceptY };
+                        if (this.boostEnergy > 40) this.isBoosting = true;
+                    } else {
+                        this.aiState = 'WANDER';
+                        let nearestFood = null;
+                        let minDist = 300;
+                        for (let f of game.foods) {
+                            const d = Math.hypot(f.x - this.x, f.y - this.y);
+                            if (d < minDist) {
+                                minDist = d;
+                                nearestFood = f;
+                            }
+                        }
+                        if (nearestFood) {
+                            this.aiTargetPos = { x: nearestFood.x, y: nearestFood.y };
+                        } else {
+                            this.aiTargetPos = {
+                                x: Math.max(100, Math.min(CONFIG.WORLD_SIZE - 100, this.x + Math.cos(this.angle) * 300)),
+                                y: Math.max(100, Math.min(CONFIG.WORLD_SIZE - 100, this.y + Math.sin(this.angle) * 300))
+                            };
+                        }
+                    }
+                }
+
+                if (this.aiTargetPos) {
+                    this.targetAngle = Math.atan2(this.aiTargetPos.y - this.y, this.aiTargetPos.x - this.x);
+                }
+            }
+
+            grow(amount) {
+                this.score += amount * 10;
+                const addSegments = Math.floor(amount);
+                const tail = this.segments[this.segments.length - 1];
+                for (let i = 0; i < addSegments; i++) {
+                    this.segments.push({ x: tail.x, y: tail.y });
+                }
+            }
+
+            die(killer = null) {
+                if (this.dead) return;
+                this.dead = true;
+                if (!this.isBot) soundSystem.playDie();
+
+                for (let i = 0; i < this.segments.length; i += 2) {
+                    const seg = this.segments[i];
+                    game.foods.push(new Food(
+                        seg.x + (Math.random() - 0.5) * 15,
+                        seg.y + (Math.random() - 0.5) * 15,
+                        2,
+                        true,
+                        this.skin.colors[i % this.skin.colors.length]
+                    ));
+                }
+
+                if (killer && killer === game.player && this.isBot) {
+                    game.triggerSmokingQuiz();
+                }
+            }
+
+            draw(ctx) {
+                if (this.dead) return;
+
+                const baseRadius = 10;
+                const colors = this.skin.colors;
+
+                for (let i = this.segments.length - 1; i >= 0; i--) {
+                    const seg = this.segments[i];
+                    const radius = i === 0 ? baseRadius + 1 : baseRadius;
+                    const color = colors[i % colors.length];
+
+                    ctx.beginPath();
+                    ctx.arc(seg.x, seg.y, radius, 0, Math.PI * 2);
+                    ctx.fillStyle = color;
+                    ctx.shadowColor = this.isBoosting ? '#38bdf8' : 'transparent';
+                    ctx.shadowBlur = this.isBoosting ? 12 : 0;
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+                }
+
+                const head = this.segments[0];
+                const eyeOffsetAngle = 0.5;
+                const eyeDist = 6;
+
+                const leftEyeX = head.x + Math.cos(this.angle - eyeOffsetAngle) * eyeDist;
+                const leftEyeY = head.y + Math.sin(this.angle - eyeOffsetAngle) * eyeDist;
+                const rightEyeX = head.x + Math.cos(this.angle + eyeOffsetAngle) * eyeDist;
+                const rightEyeY = head.y + Math.sin(this.angle + eyeOffsetAngle) * eyeDist;
+
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath(); ctx.arc(leftEyeX, leftEyeY, 3.5, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath(); ctx.arc(rightEyeX, rightEyeY, 3.5, 0, Math.PI * 2); ctx.fill();
+
+                ctx.fillStyle = '#000000';
+                ctx.beginPath(); ctx.arc(leftEyeX + Math.cos(this.angle) * 1.5, leftEyeY + Math.sin(this.angle) * 1.5, 1.8, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath(); ctx.arc(rightEyeX + Math.cos(this.angle) * 1.5, rightEyeY + Math.sin(this.angle) * 1.5, 1.8, 0, Math.PI * 2); ctx.fill();
+
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                ctx.font = '10px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(this.name, head.x, head.y - 16);
+            }
+        }
+
+        class GameEngine {
+            constructor() {
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.minimapCanvas = document.getElementById('minimapCanvas');
+                this.minimapCtx = this.minimapCanvas.getContext('2d');
+
+                this.player = null;
+                this.bots = [];
+                this.foods = [];
+                this.isRunning = false;
+                this.isPaused = false;
+                this.lastTime = performance.now();
+
+                this.camera = { x: 0, y: 0 };
+                this.mousePos = { x: 0, y: 0 };
+
+                this.touchActive = false;
+                this.joystickCenter = { x: 0, y: 0 };
+
+                this.initEvents();
+                this.resize();
+            }
+
+            resize() {
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+            }
+
+            initEvents() {
+                window.addEventListener('resize', () => this.resize());
+
+                window.addEventListener('mousemove', (e) => {
+                    this.mousePos.x = e.clientX;
+                    this.mousePos.y = e.clientY;
+                    if (this.player && !this.touchActive && !this.isPaused) {
+                        const screenCenterX = this.canvas.width / 2;
+                        const screenCenterY = this.canvas.height / 2;
+                        this.player.targetAngle = Math.atan2(e.clientY - screenCenterY, e.clientX - screenCenterX);
+                    }
+                });
+
+                window.addEventListener('mousedown', (e) => {
+                    if (e.button === 0 && this.player && !this.isPaused) this.player.isBoosting = true;
+                });
+                window.addEventListener('mouseup', (e) => {
+                    if (e.button === 0 && this.player) this.player.isBoosting = false;
+                });
+
+                window.addEventListener('keydown', (e) => {
+                    if (e.code === 'Space' && this.player && !this.isPaused) this.player.isBoosting = true;
+                });
+                window.addEventListener('keyup', (e) => {
+                    if (e.code === 'Space' && this.player) this.player.isBoosting = false;
+                });
+
+                const joyZone = document.getElementById('joystick');
+                const joyKnob = document.getElementById('joystick-knob');
+                const btnBoost = document.getElementById('btn-mobile-boost');
+
+                if ('ontouchstart' in window) {
+                    document.getElementById('touch-controls').style.display = 'block';
+                }
+
+                joyZone.addEventListener('touchstart', (e) => {
+                    this.touchActive = true;
+                    const rect = joyZone.getBoundingClientRect();
+                    this.joystickCenter = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+                }, { passive: true });
+
+                joyZone.addEventListener('touchmove', (e) => {
+                    if (!this.touchActive || this.isPaused) return;
+                    const touch = e.touches[0];
+                    const dx = touch.clientX - this.joystickCenter.x;
+                    const dy = touch.clientY - this.joystickCenter.y;
+                    const dist = Math.hypot(dx, dy);
+                    const maxDist = 40;
+
+                    const angle = Math.atan2(dy, dx);
+                    const clampedDist = Math.min(dist, maxDist);
+
+                    joyKnob.style.transform = `translate(${Math.cos(angle) * clampedDist}px, ${Math.sin(angle) * clampedDist}px)`;
+                    if (this.player) this.player.targetAngle = angle;
+                }, { passive: true });
+
+                const resetJoystick = () => {
+                    this.touchActive = false;
+                    joyKnob.style.transform = `translate(0px, 0px)`;
+                };
+                joyZone.addEventListener('touchend', resetJoystick);
+                joyZone.addEventListener('touchcancel', resetJoystick);
+
+                btnBoost.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    if (this.player && !this.isPaused) this.player.isBoosting = true;
+                });
+                btnBoost.addEventListener('touchend', (e) => {
+                    e.preventDefault();
+                    if (this.player) this.player.isBoosting = false;
+                });
+            }
+
+            spawnInitialEntities(playerName) {
+                const selectedSkin = Storage.getSelectedSkin();
+                this.player = new Worm(CONFIG.WORLD_SIZE / 2, CONFIG.WORLD_SIZE / 2, playerName || 'Cacing Sakti', selectedSkin, false);
+
+                this.bots = [];
+                const botNames = ['Titan_O', 'Overlord', 'ShadowX', 'Viper', 'Cobra', 'MegaWorm', 'Slayer', 'Speedy', 'Apex', 'Phantom', 'Dragon', 'Blaze', 'Frost', 'Toxic', 'NeonWorm', 'Alpha', 'Omega', 'KingCacing', 'Sultan', 'Mamba', 'Ghost', 'Strikers'];
+                for (let i = 0; i < CONFIG.BOT_COUNT; i++) {
+                    const skin = SKINS[Math.floor(Math.random() * SKINS.length)].id;
+                    const name = botNames[i % botNames.length] + '_' + Math.floor(Math.random() * 99);
+                    const rx = Math.random() * (CONFIG.WORLD_SIZE - 200) + 100;
+                    const ry = Math.random() * (CONFIG.WORLD_SIZE - 200) + 100;
+                    this.bots.push(new Worm(rx, ry, name, skin, true));
+                }
+
+                this.foods = [];
+                for (let i = 0; i < CONFIG.FOOD_COUNT; i++) {
+                    this.spawnFood(false);
+                }
+                for (let i = 0; i < CONFIG.RARE_FOOD_COUNT; i++) {
+                    this.spawnFood(true);
+                }
+            }
+
+            spawnFood(isSpecial = false) {
+                const rx = Math.random() * (CONFIG.WORLD_SIZE - 100) + 50;
+                const ry = Math.random() * (CONFIG.WORLD_SIZE - 100) + 50;
+                this.foods.push(new Food(rx, ry, isSpecial ? 3 : 1, isSpecial));
+            }
+
+            start(playerName) {
+                soundSystem.init();
+                this.spawnInitialEntities(playerName);
+                this.isRunning = true;
+                this.isPaused = false;
+                this.lastTime = performance.now();
+                requestAnimationFrame((t) => this.loop(t));
+            }
+
+            loop(currentTime) {
+                if (!this.isRunning) return;
+
+                const deltaTime = Math.min((currentTime - this.lastTime) / 1000, 0.1);
+                this.lastTime = currentTime;
+
+                if (!this.isPaused) {
+                    this.update(deltaTime);
+                }
+                this.render();
+
+                requestAnimationFrame((t) => this.loop(t));
+            }
+
+            update(deltaTime) {
+                if (!this.player) return;
+
+                if (!this.player.dead) {
+                    this.player.update(deltaTime);
+                }
+
+                this.camera.x += (this.player.x - this.camera.x) * 0.1;
+                this.camera.y += (this.player.y - this.camera.y) * 0.1;
+
+                for (let bot of this.bots) {
+                    if (!bot.dead) bot.update(deltaTime);
+                }
+
+                // Memakan Makanan
+                const allWorms = [this.player, ...this.bots].filter(w => !w.dead);
+                for (let i = this.foods.length - 1; i >= 0; i--) {
+                    const f = this.foods[i];
+                    for (let w of allWorms) {
+                        const dist = Math.hypot(w.x - f.x, w.y - f.y);
+                        if (dist < f.radius + 10) {
+                            w.grow(f.value);
+                            if (w === this.player) soundSystem.playEat();
+                            this.foods.splice(i, 1);
+                            if (this.foods.length < CONFIG.FOOD_COUNT) {
+                                this.spawnFood(Math.random() < 0.1);
+                            }
+                            break;
+                        }
+                    }
+                }
+
+                // TABRAKAN: HANYA MATI JIKA MENABRAK CACING LAIN
+                for (let w1 of allWorms) {
+                    const head = w1.segments[0];
+                    for (let w2 of allWorms) {
+                        if (w1 === w2) continue; // Mencegah mati menabrak tubuh sendiri
+
+                        for (let k = 0; k < w2.segments.length; k++) {
+                            const seg = w2.segments[k];
+                            const dist = Math.hypot(head.x - seg.x, head.y - seg.y);
+                            if (dist < 12) {
+                                w1.die(w2);
+                                break;
+                            }
+                        }
+                        if (w1.dead) break;
+                    }
+                }
+
+                // Respawn Bot
+                for (let i = 0; i < this.bots.length; i++) {
+                    if (this.bots[i].dead) {
+                        const skin = SKINS[Math.floor(Math.random() * SKINS.length)].id;
+                        const rx = Math.random() * (CONFIG.WORLD_SIZE - 200) + 100;
+                        const ry = Math.random() * (CONFIG.WORLD_SIZE - 200) + 100;
+                        this.bots[i] = new Worm(rx, ry, 'Bot_' + Math.floor(Math.random() * 999), skin, true);
+                    }
+                }
+
+                if (this.player.dead) {
+                    this.triggerGameOver();
+                }
+
+                document.getElementById('hud-score').innerText = Math.floor(this.player.score);
+                document.getElementById('hud-length').innerText = this.player.segments.length;
+                document.getElementById('boost-fill').style.width = `${Math.max(0, this.player.boostEnergy)}%`;
+                document.getElementById('boost-val').innerText = `${Math.floor(this.player.boostEnergy)}%`;
+
+                this.updateLeaderboard(allWorms);
+            }
+
+            triggerSmokingQuiz() {
+                this.isPaused = true;
+                const quizModal = document.getElementById('quiz-modal');
+                const quizQ = document.getElementById('quiz-question');
+                const quizOpts = document.getElementById('quiz-options');
+
+                const randomQuiz = SMOKING_QUIZZES[Math.floor(Math.random() * SMOKING_QUIZZES.length)];
+                quizQ.innerText = randomQuiz.q;
+                quizOpts.innerHTML = '';
+
+                randomQuiz.options.forEach((opt, idx) => {
+                    const btn = document.createElement('button');
+                    btn.className = 'quiz-option-btn';
+                    btn.innerText = `${String.fromCharCode(65 + idx)}. ${opt}`;
+                    btn.onclick = () => {
+                        if (idx === randomQuiz.ans) {
+                            alert('✅ BENAR! Koin ekstra +25 didapatkan.');
+                            Storage.setCoins(Storage.getCoins() + 25);
+                            updateCoinsDisplay();
+                        } else {
+                            alert(`❌ SALAH! Jawaban yang benar: ${randomQuiz.options[randomQuiz.ans]}`);
+                        }
+                        quizModal.classList.add('hidden');
+                        this.isPaused = false;
+                    };
+                    quizOpts.appendChild(btn);
+                });
+
+                quizModal.classList.remove('hidden');
+            }
+
+            updateLeaderboard(allWorms) {
+                const sorted = [...allWorms].sort((a, b) => b.score - a.score).slice(0, 5);
+                const listEl = document.getElementById('leaderboard-list');
+                listEl.innerHTML = sorted.map((w, idx) => {
+                    const isSelf = w === this.player;
+                    const style = isSelf ? 'color:#38bdf8; font-weight:bold;' : '';
+                    return `<div style="${style}">${idx + 1}. ${w.name.substring(0, 10)} - ${Math.floor(w.score)}</div>`;
+                }).join('');
+            }
+
+            render() {
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+                this.ctx.save();
+                this.ctx.translate(this.canvas.width / 2 - this.camera.x, this.canvas.height / 2 - this.camera.y);
+
+                this.drawGrid();
+
+                this.ctx.strokeStyle = '#ef4444';
+                this.ctx.lineWidth = 10;
+                this.ctx.strokeRect(0, 0, CONFIG.WORLD_SIZE, CONFIG.WORLD_SIZE);
+
+                for (let f of this.foods) {
+                    f.draw(this.ctx);
+                }
+
+                for (let bot of this.bots) {
+                    bot.draw(this.ctx);
+                }
+                if (this.player && !this.player.dead) {
+                    this.player.draw(this.ctx);
+                }
+
+                this.ctx.restore();
+
+                this.renderMinimap();
+            }
+
+            drawGrid() {
+                const gridSize = 80;
+                const startX = Math.floor((this.camera.x - this.canvas.width / 2) / gridSize) * gridSize;
+                const endX = startX + this.canvas.width + gridSize * 2;
+                const startY = Math.floor((this.camera.y - this.canvas.height / 2) / gridSize) * gridSize;
+                const endY = startY + this.canvas.height + gridSize * 2;
+
+                this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
+                this.ctx.lineWidth = 1;
+
+                for (let x = startX; x < endX; x += gridSize) {
+                    if (x < 0 || x > CONFIG.WORLD_SIZE) continue;
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(x, Math.max(0, startY));
+                    this.ctx.lineTo(x, Math.min(CONFIG.WORLD_SIZE, endY));
+                    this.ctx.stroke();
+                }
+                for (let y = startY; y < endY; y += gridSize) {
+                    if (y < 0 || y > CONFIG.WORLD_SIZE) continue;
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(Math.max(0, startX), y);
+                    this.ctx.lineTo(Math.min(CONFIG.WORLD_SIZE, endX), y);
+                    this.ctx.stroke();
+                }
+            }
+
+            renderMinimap() {
+                const mCtx = this.minimapCtx;
+                const mW = this.minimapCanvas.width;
+                const mH = this.minimapCanvas.height;
+                const scale = mW / CONFIG.WORLD_SIZE;
+
+                mCtx.clearRect(0, 0, mW, mH);
+
+                mCtx.fillStyle = 'rgba(10, 15, 25, 0.85)';
+                mCtx.fillRect(0, 0, mW, mH);
+
+                mCtx.fillStyle = '#ef4444';
+                for (let b of this.bots) {
+                    if (b.dead) continue;
+                    mCtx.beginPath();
+                    mCtx.arc(b.x * scale, b.y * scale, 1.5, 0, Math.PI * 2);
+                    mCtx.fill();
+                }
+
+                if (this.player && !this.player.dead) {
+                    mCtx.fillStyle = '#22c55e';
+                    mCtx.beginPath();
+                    mCtx.arc(this.player.x * scale, this.player.y * scale, 3, 0, Math.PI * 2);
+                    mCtx.fill();
+                }
+            }
+
+            triggerGameOver() {
+                this.isRunning = false;
+
+                const coinsEarned = Math.floor(this.player.score / 20);
+                const totalCoins = Storage.getCoins() + coinsEarned;
+                Storage.setCoins(totalCoins);
+
+                document.getElementById('go-score').innerText = Math.floor(this.player.score);
+                document.getElementById('go-length').innerText = this.player.segments.length;
+                document.getElementById('go-coins').innerText = `+${coinsEarned}`;
+
+                const allWorms = [this.player, ...this.bots];
+                const sorted = [...allWorms].sort((a, b) => b.score - a.score);
+                const rank = sorted.indexOf(this.player) + 1;
+                document.getElementById('go-rank').innerText = `#${rank}`;
+
+                document.getElementById('game-over-menu').classList.remove('hidden');
+            }
+        }
+
+        const game = new GameEngine();
+
+        function updateCoinsDisplay() {
+            const coins = Storage.getCoins();
+            document.getElementById('menu-coins').innerText = coins;
+            document.getElementById('shop-coins').innerText = coins;
+        }
+
+        function renderShopGrid() {
+            const grid = document.getElementById('skin-grid');
+            grid.innerHTML = '';
+            const unlocked = Storage.getUnlockedSkins();
+            const selected = Storage.getSelectedSkin();
+
+            SKINS.forEach(skin => {
+                const isUnlocked = unlocked.includes(skin.id);
+                const isSelected = selected === skin.id;
+
+                const card = document.createElement('div');
+                card.className = `skin-card ${isSelected ? 'selected' : ''}`;
+
+                const preview = document.createElement('div');
+                preview.className = 'skin-preview';
+                preview.style.background = `linear-gradient(135deg, ${skin.colors.join(', ')})`;
+
+                const name = document.createElement('div');
+                name.className = 'skin-name';
+                name.innerText = skin.name;
+
+                const status = document.createElement('div');
+                status.className = 'skin-cost';
+                status.innerText = isUnlocked ? (isSelected ? 'DIPAKAI' : 'MILIK') : `💰 ${skin.cost}`;
+
+                card.appendChild(preview);
+                card.appendChild(name);
+                card.appendChild(status);
+
+                card.addEventListener('click', () => {
+                    if (isUnlocked) {
+                        Storage.setSelectedSkin(skin.id);
+                        renderShopGrid();
+                    } else {
+                        const currentCoins = Storage.getCoins();
+                        if (currentCoins >= skin.cost) {
+                            Storage.setCoins(currentCoins - skin.cost);
+                            Storage.unlockSkin(skin.id);
+                            Storage.setSelectedSkin(skin.id);
+                            updateCoinsDisplay();
+                            renderShopGrid();
+                        } else {
+                            alert('Koin tidak cukup!');
+                        }
+                    }
+                });
+
+                grid.appendChild(card);
+            });
+        }
+
+        document.getElementById('btn-play').addEventListener('click', () => {
+            const name = document.getElementById('player-name').value.trim() || 'Cacing Sakti';
+            document.getElementById('hud-name').innerText = name;
+            document.getElementById('main-menu').classList.add('hidden');
+            game.start(name);
+        });
+
+        document.getElementById('btn-shop').addEventListener('click', () => {
+            document.getElementById('main-menu').classList.add('hidden');
+            document.getElementById('shop-menu').classList.remove('hidden');
+            renderShopGrid();
+        });
+
+        document.getElementById('btn-close-shop').addEventListener('click', () => {
+            document.getElementById('shop-menu').classList.add('hidden');
+            document.getElementById('main-menu').classList.remove('hidden');
+            updateCoinsDisplay();
+        });
+
+        document.getElementById('btn-restart').addEventListener('click', () => {
+            document.getElementById('game-over-menu').classList.add('hidden');
+            const name = document.getElementById('player-name').value.trim() || 'Cacing Sakti';
+            game.start(name);
+        });
+
+        document.getElementById('btn-to-menu').addEventListener('click', () => {
+            document.getElementById('game-over-menu').classList.add('hidden');
+            document.getElementById('main-menu').classList.remove('hidden');
+            updateCoinsDisplay();
+        });
+
+        updateCoinsDisplay();
+    </script>
+</body>
+</html>
